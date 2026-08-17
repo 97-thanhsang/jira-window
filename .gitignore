@@ -8,16 +8,27 @@ frontend-src/.next/
 backend/node_modules/
 backend/dist/
 backend/data/
+.next/
+out/
+coverage/
 
 # Runtime data and local configuration
 *.db
 *.db-journal
+*.pid
+*.pid.lock
 *.tsbuildinfo
 .env
 .env.*
 !.env.example
 
 # Logs and OS files
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
 .DS_Store
 Thumbs.db
+.eslintcache
+.npm/
+.pnpm-store/
