@@ -1,0 +1,23 @@
+# Dependencies and generated build output
+node_modules/
+dist/
+build/
+frontend/
+frontend-src/node_modules/
+frontend-src/.next/
+backend/node_modules/
+backend/dist/
+backend/data/
+
+# Runtime data and local configuration
+*.db
+*.db-journal
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
