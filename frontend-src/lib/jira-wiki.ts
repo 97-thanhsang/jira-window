@@ -1,5 +1,29 @@
 import type { JiraAttachment } from '@/types/jira';
 
+function safeUrl(raw: string): string | null {
+  const url = raw.trim().replace(/&amp;/gi, '&');
+  const scheme = url.match(/^([^:/?#]+):/);
+  if (scheme && /[\s\p{Cc}]/u.test(scheme[1])) {
+    return null;
+  }
+  if (/^(https?:\/\/|mailto:)/i.test(url)) {
+    return url;
+  }
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    return url;
+  }
+  return null;
+}
+
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /**
  * Convert Jira wiki markup to HTML.
  * Handles patterns seen in ASC Jira: bold, italic, headings, code blocks,
@@ -20,6 +44,8 @@ export function jiraWikiToHtml(text: string, attachments?: JiraAttachment[]): st
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
     // Headings: h1. h2. h3.
     .replace(
@@ -55,10 +81,12 @@ export function jiraWikiToHtml(text: string, attachments?: JiraAttachment[]): st
     )
 
     // Links: [text|url]
-    .replace(
-      /\[([^\]|]+)\|([^\]]+)\]/g,
-      '<a href="$2" class="text-[#0052CC] hover:underline" target="_blank" rel="noopener noreferrer">$1</a>'
-    )
+    .replace(/\[([^\]|]+)\|([^\]]+)\]/g, (_match, linkText: string, rawUrl: string) => {
+      const url = safeUrl(rawUrl);
+      return url
+        ? `<a href="${url}" class="text-[#0052CC] hover:underline" target="_blank" rel="noopener noreferrer">${linkText}</a>`
+        : linkText;
+    })
 
     // Numbered lists: lines starting with # or ##
     .replace(/^((?:#+ .+\n?)+)/gm, (match) => {
@@ -93,7 +121,7 @@ export function jiraWikiToHtml(text: string, attachments?: JiraAttachment[]): st
     if (id) {
       // Render as a clickable chip that triggers the attachment gallery lightbox
       return (
-        `<span data-attachment-id="${id}" data-filename="${filename}" ` +
+        `<span data-attachment-id="${id}" data-filename="${escapeAttr(filename)}" ` +
         `class="inline-block border border-[#DFE1E6] rounded p-1 my-1 cursor-pointer ` +
         `text-xs text-[#0052CC] hover:bg-[#DEEBFF] transition-colors select-none">🖼 ${filename}</span>`
       );
@@ -101,7 +129,7 @@ export function jiraWikiToHtml(text: string, attachments?: JiraAttachment[]): st
     // No matching attachment — show styled placeholder
     return (
       `<span class="inline-block bg-[#F4F5F7] text-[#5E6C84] text-xs px-2 py-1 rounded my-1 ` +
-      `border border-[#DFE1E6]">📎 ${filename}</span>`
+      `border border-[#DFE1E6]">📎 ${escapeAttr(filename)}</span>`
     );
   });
 

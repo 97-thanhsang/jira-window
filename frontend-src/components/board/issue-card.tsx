@@ -196,6 +196,7 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
   // Quick log modal state
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [pencilV2Open, setPencilV2Open] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const typeColor = getIssueTypeBadgeClass(issue.fields.issuetype?.name ?? '');
   const statusCat = issue.fields.status.statusCategory.key;
@@ -298,9 +299,10 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
       setOpenPopover(null);
       return;
     }
+    setSaveError(null);
     setOptAssignee(user); setOpenPopover(null);
     try { await assignIssue(issue.key, user?.name ?? null); onIssueUpdate?.(); }
-    catch { setOptAssignee(undefined); }
+    catch { setOptAssignee(undefined); setSaveError('Failed to update assignee'); }
   }, [issue.key, onIssueUpdate, editingCard, onFieldDraft]);
 
   const handlePriorityChange = useCallback(async (p: JiraPriority) => {
@@ -310,26 +312,29 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
       setOpenPopover(null);
       return;
     }
+    setSaveError(null);
     setOptPriority(p); setOpenPopover(null);
     try { await updateIssuePriority(issue.key, p.name); onIssueUpdate?.(); }
-    catch { setOptPriority(undefined); }
+    catch { setOptPriority(undefined); setSaveError('Failed to update priority'); }
   }, [issue.key, onIssueUpdate, editingCard, onFieldDraft]);
 
   const handleAddLabel = useCallback(async (label: string) => {
     const prev = displayLabels;
     if (editingCard) { const next = [...prev, label]; setOptLabels(next); onFieldDraft?.('labels', next); setLabelInput(''); return; }
+    setSaveError(null);
     setOptLabels([...prev, label]); setLabelInput(''); setLabelSubmitting(true);
     try { await addIssueLabel(issue.key, label); onIssueUpdate?.(); }
-    catch { setOptLabels(prev); setLabelInput(label); }
+    catch { setOptLabels(prev); setLabelInput(label); setSaveError('Failed to add label'); }
     finally { setLabelSubmitting(false); }
   }, [issue.key, displayLabels, onIssueUpdate, editingCard, onFieldDraft]);
 
   const handleRemoveLabel = useCallback(async (label: string) => {
     const prev = displayLabels;
     if (editingCard) { const next = prev.filter(l => l !== label); setOptLabels(next); onFieldDraft?.('labels', next); return; }
+    setSaveError(null);
     setOptLabels(prev.filter(l => l !== label)); setLabelSubmitting(true);
     try { await removeIssueLabel(issue.key, label); onIssueUpdate?.(); }
-    catch { setOptLabels(prev); }
+    catch { setOptLabels(prev); setSaveError('Failed to remove label'); }
     finally { setLabelSubmitting(false); }
   }, [issue.key, displayLabels, onIssueUpdate, editingCard, onFieldDraft]);
 
@@ -339,15 +344,18 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
 
   const handleTransition = useCallback(async (transitionId: string, targetName: string) => {
     if (editingCard) { onFieldDraft?.('status', { transitionId, targetName }); setOpenPopover(null); return; }
+    setSaveError(null);
     setStatusLoading(true);
     try { await transitionIssue(issue.key, transitionId); onIssueUpdate?.(); setOpenPopover(null); }
+    catch { setSaveError('Failed to update status'); }
     finally { setStatusLoading(false); }
   }, [issue.key, onIssueUpdate, editingCard, onFieldDraft]);
 
   const handleSaveDueDate = useCallback(async () => {
     if (editingCard) { onFieldDraft?.('duedate', dueDateInput || null); setOpenPopover(null); return; }
+    setSaveError(null);
     try { await updateIssueDueDate(issue.key, dueDateInput || null); onIssueUpdate?.(); setOpenPopover(null); }
-    catch { }
+    catch { setSaveError('Failed to update due date'); }
   }, [issue.key, dueDateInput, onIssueUpdate, editingCard, onFieldDraft]);
 
   return (
@@ -736,6 +744,7 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
           )}
         </div>
       </div>
+      {saveError && <p role="alert" className="mt-2 text-[11px] text-red-600 dark:text-red-400">{saveError}</p>}
     </div>
     {/* Quick log modal */}
     {logModalOpen && (

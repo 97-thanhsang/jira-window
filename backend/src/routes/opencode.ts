@@ -15,16 +15,26 @@ import {
   KNOWN_PROVIDERS,
 } from '../services/opencode-service';
 import type { PipelineStage } from '../types/opencode';
+import { PIPELINE_STAGES } from '../types/opencode';
+import { verifyJiraAuth } from '../services/jira-auth';
 
 const router = Router();
 
 // ─── Auth middleware — require X-Jira-Auth on every opencode route ────────────
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const auth = req.headers['x-jira-auth'];
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const rawAuth = req.headers['x-jira-auth'];
+  const auth = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
   if (!auth) {
     return res.status(401).json({ success: false, error: 'Missing X-Jira-Auth header' });
   }
-  next();
+  try {
+    if (!(await verifyJiraAuth(auth))) {
+      return res.status(401).json({ success: false, error: 'Invalid Jira credentials' });
+    }
+    next();
+  } catch {
+    return res.status(401).json({ success: false, error: 'Invalid Jira credentials' });
+  }
 }
 
 router.use(requireAuth);
@@ -81,6 +91,12 @@ router.post('/run', async (req: Request, res: Response) => {
   if (!taskKey || !stage) {
     return res.status(400).json({ success: false, error: 'taskKey and stage required' });
   }
+  if (!PIPELINE_STAGES.includes(stage as PipelineStage)) {
+    return res.status(400).json({ success: false, error: 'Invalid stage' });
+  }
+  if (mode !== undefined && !['quick', 'full', 'auto'].includes(mode)) {
+    return res.status(400).json({ success: false, error: 'Invalid mode' });
+  }
 
   try {
     validateTaskKey(taskKey);
@@ -135,38 +151,23 @@ router.get('/tasks', async (_req: Request, res: Response) => {
     const path = await import('path');
     const PROJECT_DIR = process.env.OPENCODE_PROJECT_DIR || process.cwd();
 
-    // Scan analysis-reports/ để lấy danh sách task keys
-    const analysisDir = path.join(PROJECT_DIR, 'analysis-reports');
-    let taskKeys: string[] = [];
+    const readTaskKeys = async (directory: string, suffix: string) => {
+      try {
+        const files = await fs.readdir(directory);
+        return files
+          .filter((file) => file.endsWith(suffix))
+          .map((file) => file.slice(0, -suffix.length));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+        throw error;
+      }
+    };
 
-    try {
-      const files = await fs.readdir(analysisDir);
-      taskKeys = files
-        .filter((f) => f.endsWith('-analysis.md'))
-        .map((f) => f.replace('-analysis.md', ''));
-    } catch {
-      // Thư mục chưa tồn tại — bỏ qua
-    }
-
-    // Cũng scan solution-designs/
-    const solutionDir = path.join(PROJECT_DIR, 'solution-designs');
-    try {
-      const files = await fs.readdir(solutionDir);
-      files
-        .filter((f) => f.endsWith('-solution.md'))
-        .map((f) => f.replace('-solution.md', ''))
-        .forEach((k) => { if (!taskKeys.includes(k)) taskKeys.push(k); });
-    } catch { /* ignore */ }
-
-    // Cũng scan execution-reports/
-    const executeDir = path.join(PROJECT_DIR, 'execution-reports');
-    try {
-      const files = await fs.readdir(executeDir);
-      files
-        .filter((f) => f.endsWith('-execute.md'))
-        .map((f) => f.replace('-execute.md', ''))
-        .forEach((k) => { if (!taskKeys.includes(k)) taskKeys.push(k); });
-    } catch { /* ignore */ }
+    const taskKeys = Array.from(new Set((await Promise.all([
+      readTaskKeys(path.join(PROJECT_DIR, 'analysis-reports'), '-analysis.md'),
+      readTaskKeys(path.join(PROJECT_DIR, 'solution-designs'), '-solution.md'),
+      readTaskKeys(path.join(PROJECT_DIR, 'execution-reports'), '-execute.md'),
+    ])).flat()));
 
     res.json({ success: true, data: { taskKeys } });
   } catch (err: unknown) {
@@ -226,6 +227,9 @@ router.patch('/config', async (req: Request, res: Response) => {
     const updates = req.body as Record<string, unknown>;
     if (!updates || typeof updates !== 'object') {
       return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
+    }
+    if (Object.keys(updates).some((key) => ['__proto__', 'constructor', 'prototype'].includes(key))) {
+      return res.status(400).json({ success: false, error: 'Invalid config key' });
     }
     const { config: current } = await readProjectConfig();
     const merged = { ...current, ...updates };
