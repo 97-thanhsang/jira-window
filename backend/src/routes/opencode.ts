@@ -15,16 +15,26 @@ import {
   KNOWN_PROVIDERS,
 } from '../services/opencode-service';
 import type { PipelineStage } from '../types/opencode';
+import { PIPELINE_STAGES } from '../types/opencode';
+import { verifyJiraAuth } from '../services/jira-auth';
 
 const router = Router();
 
 // ─── Auth middleware — require X-Jira-Auth on every opencode route ────────────
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const auth = req.headers['x-jira-auth'];
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const rawAuth = req.headers['x-jira-auth'];
+  const auth = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
   if (!auth) {
     return res.status(401).json({ success: false, error: 'Missing X-Jira-Auth header' });
   }
-  next();
+  try {
+    if (!(await verifyJiraAuth(auth))) {
+      return res.status(401).json({ success: false, error: 'Invalid Jira credentials' });
+    }
+    next();
+  } catch {
+    return res.status(401).json({ success: false, error: 'Invalid Jira credentials' });
+  }
 }
 
 router.use(requireAuth);
@@ -80,6 +90,12 @@ router.post('/run', async (req: Request, res: Response) => {
 
   if (!taskKey || !stage) {
     return res.status(400).json({ success: false, error: 'taskKey and stage required' });
+  }
+  if (!PIPELINE_STAGES.includes(stage as PipelineStage)) {
+    return res.status(400).json({ success: false, error: 'Invalid stage' });
+  }
+  if (mode !== undefined && !['quick', 'full', 'auto'].includes(mode)) {
+    return res.status(400).json({ success: false, error: 'Invalid mode' });
   }
 
   try {
@@ -226,6 +242,9 @@ router.patch('/config', async (req: Request, res: Response) => {
     const updates = req.body as Record<string, unknown>;
     if (!updates || typeof updates !== 'object') {
       return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
+    }
+    if (Object.keys(updates).some((key) => ['__proto__', 'constructor', 'prototype'].includes(key))) {
+      return res.status(400).json({ success: false, error: 'Invalid config key' });
     }
     const { config: current } = await readProjectConfig();
     const merged = { ...current, ...updates };

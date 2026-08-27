@@ -7,6 +7,14 @@ export type PipelineStage =
   | 'solution'
   | 'execute';
 
+export const PIPELINE_STAGES: PipelineStage[] = [
+  'decompose',
+  'extractor',
+  'analyze',
+  'solution',
+  'execute',
+];
+
 export type PipelineStatus =
   | 'IDLE'        // chưa chạy
   | 'RUNNING'     // đang chạy

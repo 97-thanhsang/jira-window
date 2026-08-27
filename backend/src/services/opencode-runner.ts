@@ -35,10 +35,14 @@ function buildCommand(opts: RunOptions): { cmd: string; args: string[] } {
     solution:  [taskKey, modeFlag].filter(Boolean),
     execute:   [taskKey].filter(Boolean),
   };
+  const stageCommand = commandMap[stage];
+  if (!stageCommand) {
+    throw new Error(`Invalid pipeline stage: ${stage}`);
+  }
 
   return {
     cmd: OPENCODE_CLI,
-    args: ['run', `/${stage}-task`, ...commandMap[stage]],
+    args: ['run', `/${stage}-task`, ...stageCommand],
   };
 }
 
