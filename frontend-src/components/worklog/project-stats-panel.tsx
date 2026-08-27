@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { WorklogEntry } from '@/types/jira';
+import { projectDot } from '@/lib/jira-colors';
 
 interface ProjectStat {
   projectKey: string;
@@ -17,16 +18,6 @@ interface ProjectStatsPanelProps {
   entries: WorklogEntry[];
   selectedProject: string | null;
   onSelectProject: (projectKey: string | null) => void;
-}
-
-const PROJECT_DOT_COLORS: Record<string, string> = {
-  HLU2: '#0052CC',
-  HUBONG01: '#36B37E',
-  EMSPRO2: '#FF8B00',
-};
-
-function projectDot(key: string): string {
-  return PROJECT_DOT_COLORS[key] ?? '#6554C0';
 }
 
 export function ProjectStatsPanel({ entries, selectedProject, onSelectProject }: ProjectStatsPanelProps) {

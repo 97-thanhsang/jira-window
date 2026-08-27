@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { useMemo } from 'react';
 import { fetchTeamPlan } from '@/lib/team-plan-api';
 import { fetchTeamWorklogs } from '@/lib/team-api';
+import { formatDuration } from '@/lib/duration';
 import type { TeamReportData } from '@/types/jira';
 
 interface UseTeamPlanParams {
@@ -59,15 +60,6 @@ export function useTeamPlan(params: UseTeamPlanParams | null) {
         loggedMap.set(e.issueKey, (loggedMap.get(e.issueKey) ?? 0) + e.timeSpentSeconds);
       }
     }
-
-    const formatDuration = (s: number) => {
-      if (s === 0) return '-';
-      const h = Math.floor(s / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      if (h >= 8 && h % 8 === 0 && m === 0) return `${h / 8}d`;
-      if (m === 0) return `${h}h`;
-      return `${h}h ${m}m`;
-    };
 
     const mergeTasks = (tasks: typeof planData.users[0]['tasks']) =>
       tasks.map(t => {

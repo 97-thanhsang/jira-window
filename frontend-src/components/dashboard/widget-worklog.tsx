@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Clock } from 'lucide-react';
+import { PROJECT_DOT_COLORS } from '@/lib/jira-colors';
 
 interface WidgetWorklogProps {
   entries?: { timeSpentSeconds: number; projectKey: string; projectName: string; started: string }[];
@@ -60,10 +61,6 @@ export function WidgetWorklog({ entries, isLoading }: WidgetWorklogProps) {
   const topProjects = Array.from(projectMap.entries())
     .sort((a, b) => b[1].hours - a[1].hours)
     .slice(0, 3);
-
-  const PROJECT_DOT_COLORS: Record<string, string> = {
-    HLU2: '#0052CC', HUBONG01: '#36B37E', EMSPRO2: '#FF8B00',
-  };
 
   return (
     <div className="space-y-3">

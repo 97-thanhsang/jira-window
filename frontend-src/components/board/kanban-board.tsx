@@ -30,13 +30,9 @@ import { BoardDetailPanel } from './board-detail-panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useBoardEdit } from '@/contexts/board-edit';
+import { PRIORITY_HEX_COLORS } from '@/lib/jira-colors';
 
 // ─── Priority / Type / Project color maps ────────────────────────────────────
-
-const PRIORITY_COLORS: Record<string, string> = {
-  Highest: '#DE350B', High: '#FF5630', Medium: '#FFAB00',
-  Low: '#2684FF', Lowest: '#2684FF', Blocker: '#DE350B', Minor: '#6B778C',
-};
 
 const TYPE_COLORS: Record<string, string> = {
   Bug: '#EF4444', 'Bug after release': '#DC2626',
@@ -336,7 +332,7 @@ function DroppableColumn({
                     break;
                   case 'priority':
                     sgAccentColor = sgFirstIssue.fields.priority
-                      ? (PRIORITY_COLORS[sgFirstIssue.fields.priority.name] ?? '#DFE1E6')
+                      ? (PRIORITY_HEX_COLORS[sgFirstIssue.fields.priority.name] ?? '#DFE1E6')
                       : '#DFE1E6';
                     break;
                   case 'type':
@@ -416,7 +412,7 @@ function DroppableColumn({
                         switch (subSubGroupBy) {
                           case 'priority':
                             ssgAccentColor = ssgFirstIssue.fields.priority
-                              ? (PRIORITY_COLORS[ssgFirstIssue.fields.priority.name] ?? '#DFE1E6')
+                              ? (PRIORITY_HEX_COLORS[ssgFirstIssue.fields.priority.name] ?? '#DFE1E6')
                               : '#DFE1E6';
                             break;
                           case 'type':
@@ -767,7 +763,7 @@ export const KanbanBoard = React.memo(function KanbanBoard({
                   break;
                 case 'priority':
                   accentColor = firstIssue.fields.priority
-                    ? (PRIORITY_COLORS[firstIssue.fields.priority.name] ?? '#DFE1E6')
+                    ? (PRIORITY_HEX_COLORS[firstIssue.fields.priority.name] ?? '#DFE1E6')
                     : '#DFE1E6';
                   break;
                 case 'type':

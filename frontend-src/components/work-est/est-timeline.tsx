@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { startOfWeek, addDays, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { WorkEstDaySchedule, WorkEstAllocation } from '@/lib/work-est-api';
+import { ISSUE_COLOR_PALETTE, PRIORITY_HEX_COLORS } from '@/lib/jira-colors';
+import { typeAbbr } from '@/lib/jira-status';
 
 interface Props {
   schedule: WorkEstDaySchedule[];
@@ -16,15 +18,6 @@ const TYPE_COLORS: Record<string, string> = {
   'Task': '#0052CC', 'Sub-task': '#008DA6', 'Story': '#36B37E',
   'Bug': '#DE350B', 'Epic': '#6554C0', 'Improvement': '#FF8B00',
 };
-
-function typeAbbr(name: string): string {
-  if (name === 'Sub-task') return 'SUB';
-  if (name === 'Story') return 'STR';
-  if (name === 'Bug') return 'BUG';
-  if (name === 'Epic') return 'EPC';
-  if (name === 'Task') return 'TSK';
-  return name.slice(0, 3).toUpperCase();
-}
 
 function TypeBadge({ typeName, iconUrl }: { typeName: string; iconUrl?: string }) {
   if (iconUrl) return <img src={iconUrl} alt={typeName} className="w-3.5 h-3.5 flex-shrink-0" />;
@@ -60,11 +53,7 @@ function getStatusColor(status: string | undefined): string {
 
 function getPriorityColor(priority: string | undefined): string {
   if (!priority) return '#DFE1E6';
-  const colors: Record<string, string> = {
-    Highest: '#DE350B', High: '#FF5630', Blocker: '#DE350B',
-    Medium: '#FFAB00', Low: '#2684FF', Lowest: '#2684FF', Minor: '#6B778C',
-  };
-  return colors[priority] ?? '#6B778C';
+  return PRIORITY_HEX_COLORS[priority] ?? '#6B778C';
 }
 
 function getPriorityBgColor(priority: string | undefined): string {
@@ -79,8 +68,7 @@ function getPriorityBgColor(priority: string | undefined): string {
 function getEntryBorderColor(issueKey: string): string {
   let hash = 0;
   for (let i = 0; i < issueKey.length; i++) hash = issueKey.charCodeAt(i) + ((hash << 5) - hash);
-  const palette = ['#0052CC','#36B37E','#DE350B','#FF8B00','#6554C0','#008DA6','#E774BB','#00B8D9','#5243AA','#BF2600','#403294','#006644','#FF991F','#172B4D','#0747A6'];
-  return palette[Math.abs(hash) % palette.length];
+  return ISSUE_COLOR_PALETTE[Math.abs(hash) % ISSUE_COLOR_PALETTE.length];
 }
 
 // ── Consolidated Card: shows est and/or log for ONE issueKey ──────────

@@ -1,10 +1,6 @@
 'use client';
 import type { WorklogEntry } from '@/types/jira';
-
-const PROJECT_COLORS: Record<string, string> = {
-  HLU2: '#0052CC', HUBONG01: '#36B37E', HUFI: '#DE350B',
-  HPMUON2: '#FF8B00', RDDEP: '#6554C0', PSDEP: '#008DA6',
-};
+import { PROJECT_COLORS } from '@/lib/jira-colors';
 
 export function WorklogEntryCard({
   entry,

@@ -16,6 +16,7 @@ import {
   AlertTriangle, Pencil, Save, MoreVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PRIORITY_HEX_COLORS } from '@/lib/jira-colors';
 import { StatusEditor, InlineTextEditor, DateEditor, EstEditor } from '../team/inline-editors';
 import { SaveConfirmModal, type EditEntry } from '../team/save-confirm-modal';
 
@@ -1176,11 +1177,7 @@ function getGroupBorderColor(groupBy: GroupBy, issue?: JiraIssue): string {
       return colors[f.issuetype.name] ?? '#6B7280';
     }
     case 'priority': {
-      const colors: Record<string, string> = {
-        Highest: '#DE350B', High: '#FF5630', Medium: '#FFAB00',
-        Low: '#2684FF', Lowest: '#2684FF', Blocker: '#DE350B', Minor: '#6B778C',
-      };
-      return f.priority ? (colors[f.priority.name] ?? '#DFE1E6') : '#DFE1E6';
+      return f.priority ? (PRIORITY_HEX_COLORS[f.priority.name] ?? '#DFE1E6') : '#DFE1E6';
     }
     case 'statusCategory': {
       const cat = f.status.statusCategory.key;

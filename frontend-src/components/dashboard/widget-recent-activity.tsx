@@ -3,17 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { Clock } from 'lucide-react';
 import type { RecentActivityItem } from '@/hooks/use-dashboard-data';
+import { STATUS_CATEGORY_BADGE_CLASSES } from '@/lib/jira-colors';
 
 interface WidgetRecentActivityProps {
   items?: RecentActivityItem[];
   isLoading?: boolean;
 }
-
-const STATUS_CATEGORY_COLORS: Record<string, string> = {
-  new: 'bg-[#5E6C84] text-white',
-  indeterminate: 'bg-[#0052CC] text-white',
-  done: 'bg-[#00875A] text-white',
-};
 
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -64,7 +59,7 @@ export function WidgetRecentActivity({ items, isLoading }: WidgetRecentActivityP
         >
           <span className="text-[10px] font-semibold text-[#0052CC] dark:text-blue-400 group-hover:underline min-w-[75px]">{item.issueKey}</span>
           <span className="text-[10px] text-[#5E6C84] dark:text-gray-400 truncate flex-1">{item.summary}</span>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm leading-none flex-shrink-0 ${STATUS_CATEGORY_COLORS[item.statusCategory] ?? 'bg-gray-400 text-white'}`}>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm leading-none flex-shrink-0 ${STATUS_CATEGORY_BADGE_CLASSES[item.statusCategory] ?? 'bg-gray-400 text-white'}`}>
             {item.status}
           </span>
           <span className="text-[9px] text-[#8993A4] dark:text-gray-500 flex-shrink-0 flex items-center gap-0.5 min-w-[42px]">

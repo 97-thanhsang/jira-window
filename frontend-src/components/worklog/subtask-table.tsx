@@ -3,31 +3,15 @@
 import { useMemo, useState, Fragment } from 'react';
 import { Pencil, Calendar, Clock, ChevronDown, ChevronRight, FolderTree } from 'lucide-react';
 import { format } from 'date-fns';
-import { getStatusBgColor, getStatusColor, getDuedateColor } from '@/components/worklog/worklog-day-cell';
+import { getDuedateColor, getStatusBgColor, getStatusColor } from '@/lib/jira-status';
+import { PRIORITY_HEX_COLORS, getIssueTypeBadgeClass } from '@/lib/jira-colors';
 import { cn } from '@/lib/utils';
 import type { WorklogEntry } from '@/types/jira';
 
 // ─── Helpers (matching board-issue-table.tsx) ────────────────────────────
 
-const TYPE_COLORS: Record<string, string> = {
-  Story: 'bg-[#36B37E] text-white', 'Sub-task': 'bg-[#0052CC] text-white',
-  Bug: 'bg-[#DE350B] text-white', Task: 'bg-[#4BADE8] text-white',
-  Epic: 'bg-[#904EE2] text-white', Support: 'bg-[#FF8B00] text-white',
-  Enhancement: 'bg-[#008DA6] text-white', Improvement: 'bg-[#6554C0] text-white',
-  'New Feature': 'bg-[#E774BB] text-white', 'Build Release': 'bg-[#7A869A] text-white',
-  'Bug after release': 'bg-[#BF2600] text-white', WBS: 'bg-[#505F79] text-white',
-};
-
-function getTypeClass(typeName: string): string {
-  return TYPE_COLORS[typeName] ?? 'bg-gray-400 text-white';
-}
-
 function getPriorityColor(name?: string): string {
-  const PRIORITY_COLORS: Record<string, string> = {
-    Highest: '#DE350B', High: '#FF5630', Medium: '#FFAB00',
-    Low: '#2684FF', Lowest: '#2684FF', Blocker: '#DE350B', Minor: '#6B778C',
-  };
-  return name ? (PRIORITY_COLORS[name] ?? '#6B778C') : '#6B778C';
+  return name ? (PRIORITY_HEX_COLORS[name] ?? '#6B778C') : '#6B778C';
 }
 
 // ─── Component ───────────────────────────────────────────────────────────
@@ -239,7 +223,7 @@ export function SubTaskTable({ entries, editMode, onEntryClick }: SubTaskTablePr
                       </td>
                       {/* Type */}
                       <td className="py-1.5 px-1.5 text-center w-20">
-                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-sm leading-none', getTypeClass(e.issueTypeName))}>
+                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-sm leading-none', getIssueTypeBadgeClass(e.issueTypeName))}>
                           {e.issueTypeName}
                         </span>
                       </td>
