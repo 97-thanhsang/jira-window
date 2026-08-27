@@ -34,8 +34,24 @@ export interface RawIssue {
   };
 }
 
+export interface TeamRawIssue extends RawIssue {
+  fields: RawIssue['fields'] & {
+    status: { name: string; statusCategory: { key: string } };
+    priority: { name: string } | null;
+    duedate: string | null;
+    parent?: {
+      key: string;
+      fields: {
+        summary: string;
+        issuetype: { name: string; iconUrl: string };
+        status?: { name: string; statusCategory?: { key: string } };
+      };
+    };
+  };
+}
+
 export function mapWorklogEntry(issue: RawIssue, wl: RawWorklog): WorklogEntry {
-  const entry: WorklogEntry = {
+  return {
     id: wl.id,
     issueId: issue.id,
     issueKey: issue.key,
@@ -53,24 +69,19 @@ export function mapWorklogEntry(issue: RawIssue, wl: RawWorklog): WorklogEntry {
     updated: wl.updated,
     estSeconds: issue.fields.timetracking?.originalEstimateSeconds ?? 0,
   };
+}
 
-  if ('status' in issue.fields) {
-    entry.status = issue.fields.status?.name ?? '';
-  }
-  if ('priority' in issue.fields) {
-    entry.priority = issue.fields.priority?.name ?? 'Medium';
-  }
-  if ('duedate' in issue.fields) {
-    entry.duedate = issue.fields.duedate ?? undefined;
-  }
-  if ('status' in issue.fields) {
-    entry.parentKey = issue.fields.parent?.key;
-    entry.parentSummary = issue.fields.parent?.fields.summary;
-    entry.parentIssueTypeName = issue.fields.parent?.fields.issuetype?.name;
-    entry.parentIssueTypeIconUrl = issue.fields.parent?.fields.issuetype?.iconUrl;
-    entry.parentStatus = issue.fields.parent?.fields.status?.name;
-    entry.parentStatusCategory = issue.fields.parent?.fields.status?.statusCategory?.key;
-  }
-
-  return entry;
+export function mapTeamWorklogEntry(issue: TeamRawIssue, wl: RawWorklog): WorklogEntry {
+  return {
+    ...mapWorklogEntry(issue, wl),
+    status: issue.fields.status?.name ?? '',
+    priority: issue.fields.priority?.name ?? 'Medium',
+    duedate: issue.fields.duedate ?? undefined,
+    parentKey: issue.fields.parent?.key,
+    parentSummary: issue.fields.parent?.fields?.summary,
+    parentIssueTypeName: issue.fields.parent?.fields?.issuetype?.name,
+    parentIssueTypeIconUrl: issue.fields.parent?.fields?.issuetype?.iconUrl,
+    parentStatus: issue.fields.parent?.fields?.status?.name,
+    parentStatusCategory: issue.fields.parent?.fields?.status?.statusCategory?.key,
+  };
 }

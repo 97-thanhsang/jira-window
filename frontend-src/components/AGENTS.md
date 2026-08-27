@@ -11,7 +11,7 @@
 ```
 components/
 ├── ui/           # @base-ui/react wrappers (button, input, avatar, tooltip, dropdown-menu, card, badge, separator, label, skeleton)
-├── shared/       # Cross-domain: status-badge, priority-icon
+├── shared/       # Cross-domain: status-badge, priority-icon, project-stats-list, collapsible-detail-panel
 ├── board/        # kanban-board, issue-card, board-filters, board-charts, board-epic-panel, board-version-panel, quick-view-panel
 ├── issues/       # issues-table, issue-row, issue-detail-panel, filter-panel, worklogs-tab, user-search-input
 ├── issue/        # Single-issue sub-components: comment-section, log-work-modal, wiki-renderer, attachment-gallery, transition-button

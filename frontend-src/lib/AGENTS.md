@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-9 files: one central axios client, domain API wrappers, AI helper (fetch-based), and utilities.
+14 files: one central axios client, domain API wrappers, AI helper (fetch-based), and utilities.
 
 ## FILE INVENTORY
 
@@ -19,12 +19,18 @@
 | `jira-wiki.ts` | Converts Jira wiki markup → HTML for `wiki-renderer.tsx`. |
 | `worklogs.ts` | localStorage helpers for recent worklogs. |
 | `utils.ts` | `cn()` — clsx + tailwind-merge. |
+| `duration.ts` | Shared duration formatting and Jira estimate helpers. |
+| `jira-colors.ts` | Shared Jira color maps and palettes. |
+| `jira-status.ts` | Shared Jira status and issue-type helpers. |
+| `work-hours.ts` | Shared work-hour interval and scheduling helpers. |
+| `worklog-mapper.ts` | Maps Jira issues and worklogs to `WorklogEntry`. |
 
 ## CONVENTIONS
 
 - `api` (axios instance) = only client for `/api/jira/*`. Do not create additional axios instances.
 - `ai.ts` uses `fetch` (not axios) intentionally — AI key is per-request, not in global interceptors.
 - Domain wrappers in `*-api.ts` are pure async functions (not hooks). Hooks in `hooks/` call these.
+- Shared Jira color maps and status helpers live in `jira-colors.ts` and `jira-status.ts` rather than being redeclared per component.
 - `typeof window === 'undefined'` guard required in any helper that reads `localStorage` — see `api.ts` lines 5-8 as reference.
 
 ## ANTI-PATTERNS

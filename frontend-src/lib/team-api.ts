@@ -1,5 +1,5 @@
 import { api } from './api';
-import { mapWorklogEntry, type RawIssue } from './worklog-mapper';
+import { mapTeamWorklogEntry, type TeamRawIssue } from './worklog-mapper';
 import type { WorklogEntry, DueTaskInfo, WorklogSearchResult } from '@/types/jira';
 
 /** Fetch worklogs for multiple users (or all users) */
@@ -19,7 +19,7 @@ export async function fetchTeamWorklogs(
     jql = `worklogAuthor IN (${userList}) AND worklogDate >= "${dateFrom}" AND worklogDate <= "${dateTo}" ORDER BY created DESC`;
   }
 
-  const r = await api.get<{ total: number; issues: RawIssue[] }>('/search', {
+  const r = await api.get<{ total: number; issues: TeamRawIssue[] }>('/search', {
     params: { jql, maxResults: 1000, fields: 'summary,issuetype,project,worklog,timetracking,status,priority,duedate,parent' },
   });
 
@@ -31,7 +31,7 @@ export async function fetchTeamWorklogs(
       const startedDate = new Date(wl.started).toISOString().slice(0, 10);
       if (!allUsers && !usernames.includes(wl.author.name)) continue;
       if (startedDate < dateFrom || startedDate > dateTo) continue;
-      entries.push(mapWorklogEntry(issue, wl));
+      entries.push(mapTeamWorklogEntry(issue, wl));
       dailyHours[startedDate] = (dailyHours[startedDate] ?? 0) + wl.timeSpentSeconds / 3600;
     }
   }
