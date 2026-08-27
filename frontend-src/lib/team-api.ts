@@ -1,39 +1,6 @@
 import { api } from './api';
+import { mapTeamWorklogEntry, type TeamRawIssue } from './worklog-mapper';
 import type { WorklogEntry, DueTaskInfo, WorklogSearchResult } from '@/types/jira';
-
-interface RawWorklog {
-  id: string;
-  author: { name: string; displayName: string; avatarUrls?: { '24x24': string } };
-  timeSpent: string;
-  timeSpentSeconds: number;
-  started: string;
-  comment: string;
-  created: string;
-  updated: string;
-}
-
-interface RawIssue {
-  id: string;
-  key: string;
-  fields: {
-    summary: string;
-    issuetype: { name: string; iconUrl: string };
-    project: { key: string; name: string };
-    worklog?: { worklogs: RawWorklog[] };
-    timetracking?: { originalEstimateSeconds: number; remainingEstimateSeconds: number };
-    status: { name: string; statusCategory: { key: string } };
-    priority: { name: string } | null;
-    duedate: string | null;
-    parent?: {
-      key: string;
-      fields: {
-        summary: string;
-        issuetype: { name: string; iconUrl: string };
-        status?: { name: string; statusCategory?: { key: string } };
-      };
-    };
-  };
-}
 
 /** Fetch worklogs for multiple users (or all users) */
 export async function fetchTeamWorklogs(
@@ -52,7 +19,7 @@ export async function fetchTeamWorklogs(
     jql = `worklogAuthor IN (${userList}) AND worklogDate >= "${dateFrom}" AND worklogDate <= "${dateTo}" ORDER BY created DESC`;
   }
 
-  const r = await api.get<{ total: number; issues: RawIssue[] }>('/search', {
+  const r = await api.get<{ total: number; issues: TeamRawIssue[] }>('/search', {
     params: { jql, maxResults: 1000, fields: 'summary,issuetype,project,worklog,timetracking,status,priority,duedate,parent' },
   });
 
@@ -64,33 +31,7 @@ export async function fetchTeamWorklogs(
       const startedDate = new Date(wl.started).toISOString().slice(0, 10);
       if (!allUsers && !usernames.includes(wl.author.name)) continue;
       if (startedDate < dateFrom || startedDate > dateTo) continue;
-      entries.push({
-        id: wl.id,
-        issueId: issue.id,
-        issueKey: issue.key,
-        issueSummary: issue.fields.summary,
-        issueTypeName: issue.fields.issuetype?.name ?? 'Task',
-        issueTypeIconUrl: issue.fields.issuetype?.iconUrl ?? '',
-        projectKey: issue.fields.project.key,
-        projectName: issue.fields.project.name,
-        author: wl.author,
-        timeSpent: wl.timeSpent,
-        timeSpentSeconds: wl.timeSpentSeconds,
-        started: wl.started,
-        comment: wl.comment ?? '',
-        created: wl.created,
-        updated: wl.updated,
-        estSeconds: issue.fields.timetracking?.originalEstimateSeconds ?? 0,
-        status: issue.fields.status?.name ?? '',
-        priority: issue.fields.priority?.name ?? 'Medium',
-        duedate: issue.fields.duedate ?? undefined,
-        parentKey: issue.fields.parent?.key,
-        parentSummary: issue.fields.parent?.fields?.summary,
-        parentIssueTypeName: issue.fields.parent?.fields?.issuetype?.name,
-        parentIssueTypeIconUrl: issue.fields.parent?.fields?.issuetype?.iconUrl,
-        parentStatus: issue.fields.parent?.fields?.status?.name,
-        parentStatusCategory: issue.fields.parent?.fields?.status?.statusCategory?.key,
-      });
+      entries.push(mapTeamWorklogEntry(issue, wl));
       dailyHours[startedDate] = (dailyHours[startedDate] ?? 0) + wl.timeSpentSeconds / 3600;
     }
   }

@@ -11,17 +11,7 @@ import { GroupSelector } from '@/components/shared/group-selector';
 import { LoadingOverlay } from '@/components/shared/loading-overlay';
 import type { TeamGroup } from '@/types/jira';
 import { DEFAULT_GROUPS, MEMBER_DISPLAY_NAMES } from '@/lib/team-constants';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatEstTotal(seconds: number): string {
-  if (seconds === 0) return '0h';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h >= 8 && h % 8 === 0 && m === 0) return `${h / 8}d`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
+import { secondsToJiraEstimate } from '@/lib/duration';
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -153,7 +143,7 @@ const [customDateTo, setCustomDateTo] = useState(() => {
     return { ...data, dateRange: { from: dateRange.dateFrom, to: dateRange.dateTo } };
   }, [data, dateRange]);
 
-  const totalEstDisplay = data ? formatEstTotal(data.totalEstSeconds) : '0h';
+  const totalEstDisplay = data ? secondsToJiraEstimate(data.totalEstSeconds) : '0h';
 
   return (
     <div className="p-6 max-w-full mx-auto relative">

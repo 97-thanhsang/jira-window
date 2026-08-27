@@ -4,28 +4,13 @@ import { useMemo, useState, Fragment } from 'react';
 import { Pencil, Calendar, ChevronDown, ChevronRight, FolderTree } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JiraIssue } from '@/types/jira';
+import {
+  PRIORITY_HEX_COLORS,
+  STATUS_CATEGORY_BADGE_CLASSES,
+  getIssueTypeBadgeClass,
+} from '@/lib/jira-colors';
 
 // ─── Helpers (matching patterns from issue-card.tsx) ─────────────────────
-
-const TYPE_COLORS: Record<string, string> = {
-  Story: 'bg-[#36B37E] text-white', 'Sub-task': 'bg-[#0052CC] text-white',
-  Bug: 'bg-[#DE350B] text-white', Task: 'bg-[#4BADE8] text-white',
-  Epic: 'bg-[#904EE2] text-white', Support: 'bg-[#FF8B00] text-white',
-  Enhancement: 'bg-[#008DA6] text-white', Improvement: 'bg-[#6554C0] text-white',
-  'New Feature': 'bg-[#E774BB] text-white', 'Build Release': 'bg-[#7A869A] text-white',
-  'Bug after release': 'bg-[#BF2600] text-white', WBS: 'bg-[#505F79] text-white',
-};
-
-const STATUS_CATEGORY_COLORS: Record<string, string> = {
-  new: 'bg-[#5E6C84] text-white',
-  indeterminate: 'bg-[#0052CC] text-white',
-  done: 'bg-[#00875A] text-white',
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  Highest: '#DE350B', High: '#FF5630', Medium: '#FFAB00',
-  Low: '#2684FF', Lowest: '#2684FF', Blocker: '#DE350B', Minor: '#6B778C',
-};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -35,15 +20,11 @@ function formatDate(dateStr: string): string {
 }
 
 function getStatusBgClass(catKey: string): string {
-  return STATUS_CATEGORY_COLORS[catKey] ?? 'bg-gray-400 text-white';
-}
-
-function getTypeClass(typeName: string): string {
-  return TYPE_COLORS[typeName] ?? 'bg-gray-400 text-white';
+  return STATUS_CATEGORY_BADGE_CLASSES[catKey] ?? 'bg-gray-400 text-white';
 }
 
 function getPriorityColor(name?: string): string {
-  return name ? (PRIORITY_COLORS[name] ?? '#6B778C') : '#6B778C';
+  return name ? (PRIORITY_HEX_COLORS[name] ?? '#6B778C') : '#6B778C';
 }
 
 function getDuedateColor(statusCat: string, duedate?: string): string {
@@ -260,7 +241,7 @@ export function BoardIssueTable({ issues, editMode, onIssueClick }: BoardIssueTa
                       </td>
                       {/* Type */}
                       <td className="py-1.5 px-1.5 text-center w-20">
-                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-sm leading-none', getTypeClass(issue.fields.issuetype.name))}>
+                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-sm leading-none', getIssueTypeBadgeClass(issue.fields.issuetype.name))}>
                           {issue.fields.issuetype.name}
                         </span>
                       </td>

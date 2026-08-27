@@ -12,20 +12,13 @@ import {
   Legend,
 } from 'recharts';
 import type { JiraIssue } from '@/types/jira';
+import { projectDot } from '@/lib/jira-colors';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 function formatHours(seconds: number): string {
   const h = seconds / 3600;
   return h >= 10 ? `${Math.round(h)}h` : `${h.toFixed(1)}h`;
-}
-
-const PROJECT_DOT_COLORS: Record<string, string> = {
-  HLU2: '#0052CC', HUBONG01: '#36B37E', EMSPRO2: '#FF8B00',
-};
-
-function projectColor(key: string): string {
-  return PROJECT_DOT_COLORS[key] ?? '#6554C0';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -129,7 +122,7 @@ export function WidgetProjectStats({ issues, isLoading }: WidgetProjectStatsProp
       <div className="space-y-1.5">
         {chartData.map(d => (
           <div key={d.projectKey} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: projectColor(d.projectKey) }} />
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: projectDot(d.projectKey) }} />
             <span className="text-[10px] text-[#5E6C84] dark:text-gray-400 min-w-[60px] truncate font-medium">{d.projectName || d.projectKey}</span>
             <span className="text-[9px] text-[#8993A4] ml-auto">{d.issueCount} issue{d.issueCount !== 1 ? 's' : ''}</span>
             <div className="flex-1 max-w-[120px] h-1.5 bg-[#DFE1E6] dark:bg-gray-700 rounded-full overflow-hidden">

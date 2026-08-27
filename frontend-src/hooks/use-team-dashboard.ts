@@ -2,6 +2,7 @@
 import useSWR from 'swr';
 import { useMemo } from 'react';
 import { fetchTeamWorklogs, fetchTeamDueDates } from '@/lib/team-api';
+import { formatDuration } from '@/lib/duration';
 import type { TeamReportData, UserReport, TaskReport, DueTaskInfo, WorklogEntry } from '@/types/jira';
 
 interface UseTeamDashboardParams {
@@ -10,16 +11,6 @@ interface UseTeamDashboardParams {
   dateTo: string;
   project?: string;
   allUsers?: boolean;
-}
-
-/** Format seconds to human-readable string: "8h", "2d", "4h 30m" */
-function formatDuration(seconds: number): string {
-  if (seconds === 0) return '-';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h >= 8 && h % 8 === 0 && m === 0) return `${h / 8}d`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
 }
 
 /** Build a task-centric report grouped by user */

@@ -32,10 +32,55 @@ function hasPathTraversal(rawPath: string | string[]): boolean {
   return segments.some((segment) => segment === '..' || segment === '.');
 }
 
+function getJiraAuth(req: Request): string | undefined {
+  const rawAuth = req.headers['x-jira-auth'];
+  return Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
+}
+
+function getWildcardPath(req: Request): string {
+  // Express v5 path-to-regexp v8: /*path captures an ARRAY of segments, not a string
+  // e.g. /issue/PROJ-123/transitions → ['issue', 'PROJ-123', 'transitions']
+  const rawPath = req.params['path'];
+  return Array.isArray(rawPath) ? rawPath.join('/') : (rawPath ?? '');
+}
+
+function createProxyHandler(pathPrefix: string, errorMessage: string) {
+  return async (req: Request, res: Response) => {
+    const authHeader = getJiraAuth(req);
+    if (!authHeader) {
+      res.status(401).json({ error: 'Missing X-Jira-Auth header' });
+      return;
+    }
+
+    const jiraPath = getWildcardPath(req);
+    const jiraUrl = `${config.jiraBaseUrl}${pathPrefix}${jiraPath}`;
+
+    try {
+      const response = await axios({
+        method: req.method,
+        url: jiraUrl,
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        params: req.query,
+        data: req.method !== 'GET' ? req.body : undefined,
+      });
+
+      res.status(response.status).json(response.data);
+    } catch (err) {
+      const error = err as AxiosError;
+      const status = error.response?.status || 500;
+      const data = error.response?.data || { error: errorMessage };
+      res.status(status).json(data);
+    }
+  };
+}
+
 // ─── Avatar proxy: stream Jira avatar with auth ──────────────────────────────
 router.get('/avatar', async (req: Request, res: Response) => {
-  const rawAuth = req.headers['x-jira-auth'];
-  const authHeader = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
+  const authHeader = getJiraAuth(req);
   if (!authHeader) {
     return res.status(401).json({ error: 'Missing auth' });
   }
@@ -81,8 +126,7 @@ router.get('/avatar', async (req: Request, res: Response) => {
 // NOTE: Jira Server does NOT support ?redirect=false (Cloud only).
 // We use maxRedirects + keep Authorization on redirect via httpAgent workaround.
 router.get('/attachment-content/:id', async (req: Request, res: Response) => {
-  const rawAuth = req.headers['x-jira-auth'];
-  const authHeader = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
+  const authHeader = getJiraAuth(req);
   if (!authHeader) {
     return res.status(401).json({ error: 'Missing auth' });
   }
@@ -135,8 +179,7 @@ router.get('/attachment-content/:id', async (req: Request, res: Response) => {
 // ─── Thumbnail proxy ─────────────────────────────────────────────────────────
 // GET /api/jira/attachment-thumbnail/:id → thumbnail (smaller)
 router.get('/attachment-thumbnail/:id', async (req: Request, res: Response) => {
-  const rawAuth = req.headers['x-jira-auth'];
-  const authHeader = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
+  const authHeader = getJiraAuth(req);
   if (!authHeader) {
     return res.status(401).json({ error: 'Missing auth' });
   }

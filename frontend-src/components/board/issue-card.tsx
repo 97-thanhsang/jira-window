@@ -8,6 +8,11 @@ import { useDndContext } from '@dnd-kit/core';
 import { useBoardEdit } from '@/contexts/board-edit';
 import { LogWorkModal } from '@/components/issue/log-work-modal';
 import { PencilV2Modal } from '@/components/issue/pencil-v2-modal';
+import {
+  PRIORITY_HEX_COLORS,
+  STATUS_CATEGORY_BADGE_CLASSES,
+  getIssueTypeBadgeClass,
+} from '@/lib/jira-colors';
 
 export interface IssueCardProps {
   issue: JiraIssue;
@@ -19,31 +24,12 @@ export interface IssueCardProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const issueTypeColors: Record<string, string> = {
-  Story: 'bg-[#36B37E] text-white', 'Sub-task': 'bg-[#0052CC] text-white',
-  Bug: 'bg-[#DE350B] text-white', Task: 'bg-[#4BADE8] text-white',
-  Epic: 'bg-[#904EE2] text-white', Support: 'bg-[#FF8B00] text-white',
-  Enhancement: 'bg-[#008DA6] text-white', Improvement: 'bg-[#6554C0] text-white',
-  'New Feature': 'bg-[#E774BB] text-white', 'Build Release': 'bg-[#7A869A] text-white',
-  'Bug after release': 'bg-[#BF2600] text-white', WBS: 'bg-[#505F79] text-white',
-};
-
-const STATUS_CATEGORY_COLORS: Record<string, string> = {
-  new: 'bg-[#5E6C84] text-white',
-  indeterminate: 'bg-[#0052CC] text-white',
-  done: 'bg-[#00875A] text-white',
-};
-
 const PRIORITY_OPTIONS: Array<{ name: JiraPriority['name']; color: string }> = [
   { name: 'Highest', color: '#DE350B' }, { name: 'High', color: '#FF5630' },
   { name: 'Medium', color: '#FFAB00' }, { name: 'Low', color: '#2684FF' },
   { name: 'Lowest', color: '#2684FF' }, { name: 'Blocker', color: '#DE350B' },
   { name: 'Minor', color: '#6B778C' },
 ];
-
-const PRIORITY_COLORS: Record<string, string> = Object.fromEntries(
-  PRIORITY_OPTIONS.map(p => [p.name, p.color]),
-);
 
 const LABEL_COLORS = ['#0052CC', '#36B37E', '#DE350B', '#FF8B00', '#6554C0', '#008DA6', '#E774BB', '#FF5630', '#00B8D9', '#8777D9'];
 
@@ -212,7 +198,7 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
   const [pencilV2Open, setPencilV2Open] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const typeColor = issueTypeColors[issue.fields.issuetype?.name ?? ''] ?? 'bg-gray-400 text-white';
+  const typeColor = getIssueTypeBadgeClass(issue.fields.issuetype?.name ?? '');
   const statusCat = issue.fields.status.statusCategory.key;
   const dueDateStatus = statusCat === 'done' ? null : getDueDateStatus(issue.fields.duedate);
   const components = issue.fields.components ?? [];
@@ -396,7 +382,7 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
           type="button"
           className={cn(
             'text-[10px] font-bold px-1.5 py-0.5 rounded-sm flex-shrink-0 leading-none',
-            STATUS_CATEGORY_COLORS[statusCat] ?? 'bg-gray-400 text-white',
+            STATUS_CATEGORY_BADGE_CLASSES[statusCat] ?? 'bg-gray-400 text-white',
             (editMode || editingCard) && 'cursor-pointer ring-1 ring-[#0052CC]/40',
             editingCard && 'ring-2 ring-[#0052CC]',
             draft?.status != null && '!ring-2 !ring-[#36B37E]',
@@ -652,7 +638,7 @@ export function IssueCard({ issue, onCardClick, onIssueUpdate, dragHandleProps }
               editingCard ? 'cursor-pointer ring-2 ring-[#0052CC]/30' : 'cursor-default',
               draftHighlight('priority', draft),
             )}
-            style={{ color: PRIORITY_COLORS[displayPriority?.name ?? ''] ?? '#6B778C' }}
+            style={{ color: PRIORITY_HEX_COLORS[displayPriority?.name ?? ''] ?? '#6B778C' }}
             title={displayPriority?.name ?? 'No priority'}
           >
             {displayPriority?.name ?? '—'}

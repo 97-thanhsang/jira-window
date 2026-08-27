@@ -1,4 +1,5 @@
 import { api } from './api';
+import { formatDuration } from './duration';
 import type { TaskReport, UserReport, TeamReportData } from '@/types/jira';
 
 interface SubTaskIssue {
@@ -33,15 +34,6 @@ interface ParentIssueData {
   statusCategory: string;   // 'new' | 'indeterminate' | 'done'
   duedate: string | null;
   est: number;
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds === 0) return '-';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h >= 8 && h % 8 === 0 && m === 0) return `${h / 8}d`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
 }
 
 export async function fetchTeamPlan(

@@ -1,4 +1,5 @@
 import { api } from './api';
+import { mapWorklogEntry, type RawIssue } from './worklog-mapper';
 import type { WorklogEntry, WorklogSearchResult, WorklogCreatePayload } from '@/types/jira';
 
 export async function fetchWorklogs(
@@ -7,31 +8,7 @@ export async function fetchWorklogs(
   dateTo: string,
 ): Promise<WorklogSearchResult> {
   const jql = `worklogDate >= "${dateFrom}" AND worklogDate <= "${dateTo}" AND worklogAuthor = "${username}" ORDER BY created DESC`;
-  const r = await api.get<{
-    total: number;
-    issues: Array<{
-      id: string;
-      key: string;
-      fields: {
-        summary: string;
-        issuetype: { name: string; iconUrl: string };
-        project: { key: string; name: string };
-        worklog: {
-          worklogs: Array<{
-            id: string;
-            author: { name: string; displayName: string; avatarUrls?: { '24x24': string } };
-            timeSpent: string;
-            timeSpentSeconds: number;
-            started: string;
-            comment: string;
-            created: string;
-            updated: string;
-          }>;
-        };
-        timetracking?: { originalEstimateSeconds: number; remainingEstimateSeconds: number };
-      };
-    }>;
-  }>('/search', {
+  const r = await api.get<{ total: number; issues: RawIssue[] }>('/search', {
     params: { jql, maxResults: 500, fields: 'summary,issuetype,project,worklog,timetracking' },
   });
 
@@ -45,24 +22,7 @@ export async function fetchWorklogs(
       if (wl.author.name !== username) continue;
       if (startedDate < dateFrom || startedDate > dateTo) continue;
 
-      entries.push({
-        id: wl.id,
-        issueId: issue.id,
-        issueKey: issue.key,
-        issueSummary: issue.fields.summary,
-        issueTypeName: issue.fields.issuetype?.name ?? 'Task',
-        issueTypeIconUrl: issue.fields.issuetype?.iconUrl ?? '',
-        projectKey: issue.fields.project.key,
-        projectName: issue.fields.project.name,
-        author: wl.author,
-        timeSpent: wl.timeSpent,
-        timeSpentSeconds: wl.timeSpentSeconds,
-        started: wl.started,
-        comment: wl.comment ?? '',
-        created: wl.created,
-        updated: wl.updated,
-        estSeconds: issue.fields.timetracking?.originalEstimateSeconds ?? 0,
-      });
+      entries.push(mapWorklogEntry(issue, wl));
       dailyHours[startedDate] = (dailyHours[startedDate] ?? 0) + wl.timeSpentSeconds / 3600;
     }
   }
