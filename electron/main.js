@@ -52,7 +52,9 @@ function startBackend() {
   );
   backendProc.stdout.on('data', (d) => console.log('[backend]', String(d).trim()));
   backendProc.stderr.on('data', (d) => console.error('[backend]', String(d).trim()));
+  backendProc.on('error', (err) => console.error('[backend] process error:', err));
   backendProc.on('exit', (c, s) => console.log(`[backend] exited code=${c} signal=${s}`));
+  return backendProc;
 }
 
 function startFrontend() {
@@ -69,13 +71,37 @@ function startFrontend() {
   );
   frontendProc.stdout.on('data', (d) => console.log('[frontend]', String(d).trim()));
   frontendProc.stderr.on('data', (d) => console.error('[frontend]', String(d).trim()));
+  frontendProc.on('error', (err) => console.error('[frontend] process error:', err));
   frontendProc.on('exit', (c, s) => console.log(`[frontend] exited code=${c} signal=${s}`));
+  return frontendProc;
+}
+
+function waitForProcess(child, name, url) {
+  let onError;
+  let onExit;
+  const processFailure = new Promise((_, reject) => {
+    onError = (err) => reject(new Error(`${name} failed to start: ${err.message}`));
+    onExit = (code, signal) => reject(new Error(
+      `${name} exited before becoming ready (code=${code ?? 'unknown'}, signal=${signal ?? 'none'})`
+    ));
+    child.once('error', onError);
+    child.once('exit', onExit);
+  });
+
+  return Promise.race([waitFor(url), processFailure]).finally(() => {
+    child.removeListener('error', onError);
+    child.removeListener('exit', onExit);
+  });
 }
 
 function stopAll() {
   [backendProc, frontendProc].forEach((p) => {
     if (p && !p.killed) {
-      try { p.kill(); } catch (_) { /* ignore */ }
+      try {
+        if (!p.kill()) console.warn(`[shutdown] failed to stop pid=${p.pid}`);
+      } catch (err) {
+        console.error(`[shutdown] failed to stop pid=${p.pid}:`, err);
+      }
     }
   });
   backendProc = null;
@@ -94,7 +120,7 @@ async function createWindow() {
       sandbox: true,
     },
   });
-  mainWindow.loadURL(`http://${HOST}:${FRONTEND_PORT}`);
+  await mainWindow.loadURL(`http://${HOST}:${FRONTEND_PORT}`);
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
@@ -117,6 +143,8 @@ function initAutoUpdater() {
           console.error('[updater] download failed:', err.message);
         });
       }
+    }).catch((err) => {
+      console.error('[updater] failed to show update prompt:', err);
     });
   });
 
@@ -133,6 +161,8 @@ function initAutoUpdater() {
       if (response === 0) {
         autoUpdater.quitAndInstall(false, true);
       }
+    }).catch((err) => {
+      console.error('[updater] failed to show restart prompt:', err);
     });
   });
 
@@ -157,13 +187,13 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    app.setAppUserModelId('com.jirapower.desktop');
-    startBackend();
-    startFrontend();
     try {
+      app.setAppUserModelId('com.jirapower.desktop');
+      const backend = startBackend();
+      const frontend = startFrontend();
       await Promise.all([
-        waitFor(`http://${HOST}:${BACKEND_PORT}/health`),
-        waitFor(`http://${HOST}:${FRONTEND_PORT}`),
+        waitForProcess(backend, 'Backend', `http://${HOST}:${BACKEND_PORT}/health`),
+        waitForProcess(frontend, 'Frontend', `http://${HOST}:${FRONTEND_PORT}`),
       ]);
       await createWindow();
       initAutoUpdater();
@@ -174,6 +204,9 @@ if (!gotLock) {
       );
       app.quit();
     }
+  }).catch((err) => {
+    console.error('[startup] app initialization failed:', err);
+    app.quit();
   });
 
   app.on('window-all-closed', () => {

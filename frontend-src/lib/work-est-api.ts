@@ -173,39 +173,35 @@ export async function fetchSubTasks(
   const parentDataMap = new Map<string, ParentInfo>();
 
   if (parentKeys.length > 0) {
-    try {
-      const pJql = `key IN (${parentKeys.map(k => `"${k}"`).join(', ')})`;
-      const pr = await api.get<{
-        issues: Array<{
-          key: string;
-          fields: {
-            summary: string;
-            issuetype: { name: string; iconUrl: string };
-            status: { name: string };
-            duedate: string | null;
-            timetracking?: { originalEstimateSeconds?: number };
-          };
-        }>;
-      }>('/search', {
-        params: {
-          jql: pJql,
-          maxResults: parentKeys.length + 10,
-          fields: 'summary,issuetype,status,duedate,timetracking',
-        },
+    const pJql = `key IN (${parentKeys.map(k => `"${k}"`).join(', ')})`;
+    const pr = await api.get<{
+      issues: Array<{
+        key: string;
+        fields: {
+          summary: string;
+          issuetype: { name: string; iconUrl: string };
+          status: { name: string };
+          duedate: string | null;
+          timetracking?: { originalEstimateSeconds?: number };
+        };
+      }>;
+    }>('/search', {
+      params: {
+        jql: pJql,
+        maxResults: parentKeys.length + 10,
+        fields: 'summary,issuetype,status,duedate,timetracking',
+      },
+    });
+    for (const pi of pr.data.issues ?? []) {
+      parentDataMap.set(pi.key, {
+        key: pi.key,
+        summary: pi.fields.summary,
+        issueTypeName: pi.fields.issuetype?.name ?? '',
+        issueTypeIconUrl: pi.fields.issuetype?.iconUrl ?? '',
+        status: pi.fields.status?.name ?? '',
+        duedate: pi.fields.duedate,
+        estSeconds: pi.fields.timetracking?.originalEstimateSeconds ?? 0,
       });
-      for (const pi of pr.data.issues ?? []) {
-        parentDataMap.set(pi.key, {
-          key: pi.key,
-          summary: pi.fields.summary,
-          issueTypeName: pi.fields.issuetype?.name ?? '',
-          issueTypeIconUrl: pi.fields.issuetype?.iconUrl ?? '',
-          status: pi.fields.status?.name ?? '',
-          duedate: pi.fields.duedate,
-          estSeconds: pi.fields.timetracking?.originalEstimateSeconds ?? 0,
-        });
-      }
-    } catch {
-      // Non-critical
     }
   }
 
@@ -383,15 +379,13 @@ export async function fetchTasksByDateRange(
   };
 
   const fetchWithJql = async (jql: string) => {
-    try {
-      const r = await api.get<{ issues: SubTaskRaw[] }>('/search', {
-        params: { jql, maxResults: 200, fields: 'summary,issuetype,project,timetracking,status,priority,duedate,assignee,parent,created,updated,reporter,worklog' },
-      });
-      for (const issue of r.data.issues ?? []) {
-        const mapped = mapIssue(issue);
-        if (mapped) results.push(mapped);
-      }
-    } catch { /* skip */ }
+    const r = await api.get<{ issues: SubTaskRaw[] }>('/search', {
+      params: { jql, maxResults: 200, fields: 'summary,issuetype,project,timetracking,status,priority,duedate,assignee,parent,created,updated,reporter,worklog' },
+    });
+    for (const issue of r.data.issues ?? []) {
+      const mapped = mapIssue(issue);
+      if (mapped) results.push(mapped);
+    }
   };
 
   await Promise.all([fetchWithJql(q1), fetchWithJql(q2)]);
@@ -822,4 +816,3 @@ export function distributeEstimates(
     errors: errors.length > 0 ? errors : undefined,
   };
 }
-
