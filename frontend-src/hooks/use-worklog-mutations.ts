@@ -23,8 +23,9 @@ export function useWorklogMutations(onSuccess: () => void) {
       await addWorklog(payload);
       showToast('Worklog added', 'success');
       onSuccess();
-    } catch {
+    } catch (error) {
       showToast('Failed to add worklog', 'error');
+      throw error;
     }
   }, [onSuccess]);
 
@@ -35,8 +36,9 @@ export function useWorklogMutations(onSuccess: () => void) {
       await updateWorklog(entry.issueKey, entry.id, changes);
       showToast('Worklog updated', 'success');
       onSuccess();
-    } catch {
+    } catch (error) {
       showToast('Failed to update worklog', 'error');
+      throw error;
     }
   }, [onSuccess]);
 
@@ -45,8 +47,9 @@ export function useWorklogMutations(onSuccess: () => void) {
       await deleteWorklog(entry.issueKey, entry.id);
       showToast('Worklog deleted', 'success');
       onSuccess();
-    } catch {
+    } catch (error) {
       showToast('Failed to delete worklog', 'error');
+      throw error;
     }
   }, [onSuccess]);
 

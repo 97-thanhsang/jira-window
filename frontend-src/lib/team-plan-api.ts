@@ -81,35 +81,31 @@ export async function fetchTeamPlan(
   const parentDataMap = new Map<string, ParentIssueData>();
 
   if (parentKeySet.size > 0) {
-    try {
-      const parentKeys = Array.from(parentKeySet);
-      const parentJql = `key IN (${parentKeys.map(k => `"${k}"`).join(', ')})`;
-      const pr = await api.get<{
-        issues: Array<{
-          key: string;
-          fields: {
-            status: { name: string; statusCategory: { key: string } };
-            duedate: string | null;
-            timetracking?: { originalEstimateSeconds?: number };
-          };
-        }>;
-      }>('/search', {
-        params: {
-          jql: parentJql,
-          maxResults: parentKeys.length + 20,
-          fields: 'status,duedate,timetracking',
-        },
+    const parentKeys = Array.from(parentKeySet);
+    const parentJql = `key IN (${parentKeys.map(k => `"${k}"`).join(', ')})`;
+    const pr = await api.get<{
+      issues: Array<{
+        key: string;
+        fields: {
+          status: { name: string; statusCategory: { key: string } };
+          duedate: string | null;
+          timetracking?: { originalEstimateSeconds?: number };
+        };
+      }>;
+    }>('/search', {
+      params: {
+        jql: parentJql,
+        maxResults: parentKeys.length + 20,
+        fields: 'status,duedate,timetracking',
+      },
+    });
+    for (const pi of pr.data.issues ?? []) {
+      parentDataMap.set(pi.key, {
+        status: pi.fields.status.name,
+        statusCategory: pi.fields.status.statusCategory?.key ?? 'new',
+        duedate: pi.fields.duedate,
+        est: pi.fields.timetracking?.originalEstimateSeconds ?? 0,
       });
-      for (const pi of pr.data.issues ?? []) {
-        parentDataMap.set(pi.key, {
-          status: pi.fields.status.name,
-          statusCategory: pi.fields.status.statusCategory?.key ?? 'new',
-          duedate: pi.fields.duedate,
-          est: pi.fields.timetracking?.originalEstimateSeconds ?? 0,
-        });
-      }
-    } catch {
-      // Non-critical — continue without parent details
     }
   }
 

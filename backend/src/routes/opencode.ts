@@ -135,38 +135,23 @@ router.get('/tasks', async (_req: Request, res: Response) => {
     const path = await import('path');
     const PROJECT_DIR = process.env.OPENCODE_PROJECT_DIR || process.cwd();
 
-    // Scan analysis-reports/ để lấy danh sách task keys
-    const analysisDir = path.join(PROJECT_DIR, 'analysis-reports');
-    let taskKeys: string[] = [];
+    const readTaskKeys = async (directory: string, suffix: string) => {
+      try {
+        const files = await fs.readdir(directory);
+        return files
+          .filter((file) => file.endsWith(suffix))
+          .map((file) => file.slice(0, -suffix.length));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+        throw error;
+      }
+    };
 
-    try {
-      const files = await fs.readdir(analysisDir);
-      taskKeys = files
-        .filter((f) => f.endsWith('-analysis.md'))
-        .map((f) => f.replace('-analysis.md', ''));
-    } catch {
-      // Thư mục chưa tồn tại — bỏ qua
-    }
-
-    // Cũng scan solution-designs/
-    const solutionDir = path.join(PROJECT_DIR, 'solution-designs');
-    try {
-      const files = await fs.readdir(solutionDir);
-      files
-        .filter((f) => f.endsWith('-solution.md'))
-        .map((f) => f.replace('-solution.md', ''))
-        .forEach((k) => { if (!taskKeys.includes(k)) taskKeys.push(k); });
-    } catch { /* ignore */ }
-
-    // Cũng scan execution-reports/
-    const executeDir = path.join(PROJECT_DIR, 'execution-reports');
-    try {
-      const files = await fs.readdir(executeDir);
-      files
-        .filter((f) => f.endsWith('-execute.md'))
-        .map((f) => f.replace('-execute.md', ''))
-        .forEach((k) => { if (!taskKeys.includes(k)) taskKeys.push(k); });
-    } catch { /* ignore */ }
+    const taskKeys = Array.from(new Set((await Promise.all([
+      readTaskKeys(path.join(PROJECT_DIR, 'analysis-reports'), '-analysis.md'),
+      readTaskKeys(path.join(PROJECT_DIR, 'solution-designs'), '-solution.md'),
+      readTaskKeys(path.join(PROJECT_DIR, 'execution-reports'), '-execute.md'),
+    ])).flat()));
 
     res.json({ success: true, data: { taskKeys } });
   } catch (err: unknown) {

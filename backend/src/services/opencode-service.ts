@@ -167,6 +167,35 @@ export function startService(): Promise<void> {
 
     managedProc      = proc;
     managedStartedAt = new Date();
+    let settled = false;
+    let poll: NodeJS.Timeout | null = null;
+
+    const fail = (error: Error, terminate = false) => {
+      if (settled) return;
+      settled = true;
+      if (poll) clearInterval(poll);
+      if (terminate && proc.exitCode === null && !proc.killed) {
+        try {
+          if (!proc.kill('SIGTERM')) {
+            console.warn('[opencode-service] failed to stop unhealthy process');
+          }
+        } catch (killError) {
+          console.warn('[opencode-service] failed to stop unhealthy process:', killError);
+        }
+      }
+      if (managedProc === proc) {
+        managedProc = null;
+        managedStartedAt = null;
+      }
+      reject(error);
+    };
+
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
+      if (poll) clearInterval(poll);
+      resolve();
+    };
 
     // Parse stdout for "opencode server listening on http://<host>:<port>"
     proc.stdout?.on('data', (chunk: Buffer) => {
@@ -178,31 +207,34 @@ export function startService(): Promise<void> {
     });
 
     proc.on('error', (err) => {
-      managedProc      = null;
-      managedStartedAt = null;
-      reject(err);
+      fail(err);
     });
 
-    proc.on('exit', (code) => {
-      managedProc      = null;
-      managedStartedAt = null;
-      if (code && code !== 0) {
+    proc.on('exit', (code, signal) => {
+      if (managedProc === proc) {
+        managedProc = null;
+        managedStartedAt = null;
+      }
+      if (!settled) {
+        fail(new Error(
+          `OpenCode server exited before becoming healthy (code=${code ?? 'unknown'}, signal=${signal ?? 'none'})`,
+        ));
+      } else if (code && code !== 0) {
         console.warn(`[opencode-service] process exited with code ${code}`);
       }
     });
 
     // Poll health until ready (max 20 s)
     let attempts = 0;
-    const poll = setInterval(async () => {
+    poll = setInterval(async () => {
       attempts++;
       try {
         await fetchOpenCodeHealth(managedPort);
-        clearInterval(poll);
-        resolve();
-      } catch {
+        succeed();
+      } catch (error) {
         if (attempts >= 40) {
-          clearInterval(poll);
-          reject(new Error('OpenCode server did not become healthy within 20 s'));
+          const detail = error instanceof Error ? `: ${error.message}` : '';
+          fail(new Error(`OpenCode server did not become healthy within 20 s${detail}`), true);
         }
       }
     }, 500);
@@ -212,20 +244,36 @@ export function startService(): Promise<void> {
 // ─── Stop ────────────────────────────────────────────────────────────────────
 
 export function stopService(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const proc = managedProc;
     if (!proc || proc.exitCode !== null) {
       managedProc      = null;
       managedStartedAt = null;
       return resolve();
     }
-    proc.once('exit', () => {
+    let timeout: NodeJS.Timeout;
+    const onExit = () => {
+      clearTimeout(timeout);
       managedProc      = null;
       managedStartedAt = null;
       resolve();
-    });
-    try { proc.kill('SIGTERM'); }
-    catch { managedProc = null; managedStartedAt = null; resolve(); }
+    };
+    timeout = setTimeout(() => {
+      proc.removeListener('exit', onExit);
+      reject(new Error('OpenCode server did not exit after SIGTERM'));
+    }, 5000);
+    proc.once('exit', onExit);
+    try {
+      if (!proc.kill('SIGTERM')) {
+        clearTimeout(timeout);
+        proc.removeListener('exit', onExit);
+        reject(new Error('Failed to send SIGTERM to OpenCode server'));
+      }
+    } catch (error) {
+      clearTimeout(timeout);
+      proc.removeListener('exit', onExit);
+      reject(error);
+    }
   });
 }
 
@@ -243,20 +291,42 @@ export async function readProjectConfig(): Promise<{
   filePath: string | null;
 }> {
   for (const p of PROJECT_CONFIG_PATHS) {
+    let raw: string;
     try {
-      const raw = await fs.readFile(p, 'utf-8');
+      raw = await fs.readFile(p, 'utf-8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to read OpenCode project config at ${p}: ${detail}`);
+    }
+
+    try {
       return { config: JSON.parse(stripJsonc(raw)) as Record<string, unknown>, filePath: p };
-    } catch { /* try next */ }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid OpenCode project config at ${p}: ${detail}`);
+    }
   }
   return { config: {}, filePath: null };
 }
 
 export async function readGlobalConfig(): Promise<Record<string, unknown>> {
   for (const p of globalConfigPaths()) {
+    let raw: string;
     try {
-      const raw = await fs.readFile(p, 'utf-8');
+      raw = await fs.readFile(p, 'utf-8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to read OpenCode global config at ${p}: ${detail}`);
+    }
+
+    try {
       return JSON.parse(stripJsonc(raw)) as Record<string, unknown>;
-    } catch { /* try next */ }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid OpenCode global config at ${p}: ${detail}`);
+    }
   }
   return {};
 }
